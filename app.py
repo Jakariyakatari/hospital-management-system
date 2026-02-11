@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
 import os
 
@@ -120,6 +120,8 @@ def patient_book():
         )
         db.session.add(a)
         db.session.commit()
+        flash(f"Appointment booked successfully, {session['patient_name']}!")
+
         return redirect("/patient/dashboard")
 
     return render_template("patient/book.html")
@@ -180,6 +182,10 @@ def doctor_review(id):
         appt.suggestion = request.form["suggestion"]
         appt.medicine = request.form["medicine"]
         db.session.commit()
+
+        # 🔔 Flash Message
+        flash(f"Suggestion sent successfully to {appt.patient_name}")  # 👈 HERE
+
         return redirect("/doctor/dashboard")
 
     return render_template("doctor/review.html", appt=appt)
@@ -197,3 +203,10 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
+
+    
+
+# ================= END =================
+
+

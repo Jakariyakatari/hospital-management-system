@@ -16,7 +16,8 @@
         background-color: #f4f8fb;
       }
       .card {
-        border-radius: 12px;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
       }
       .navbar-brand {
         font-weight: bold;
@@ -25,12 +26,14 @@
   </head>
 
   <body>
+    <!-- Top Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container">
         <a class="navbar-brand" href="/">CityCare Hospital</a>
       </div>
     </nav>
 
+    <!-- Green Section -->
     <nav class="navbar navbar-dark bg-success">
       <div class="container">
         <span class="navbar-brand">Patient Review</span>
@@ -38,25 +41,27 @@
     </nav>
 
     <div class="container mt-5">
-      <div class="card shadow">
+      <div class="card">
         <div class="card-body">
-          <h5>Patient: {{ appt.patient_name }}</h5>
-          <p>{{ appt.problem }}</p>
+          <h5 class="mb-2">Patient: {{ appt.patient_name }}</h5>
+          <p class="text-muted">{{ appt.problem }}</p>
 
           <form method="post">
             <textarea
               class="form-control mb-3"
               name="suggestion"
               placeholder="Doctor Suggestions"
+              required
             ></textarea>
 
             <textarea
               class="form-control mb-3"
               name="medicine"
               placeholder="Medicine Names"
+              required
             ></textarea>
 
-            <button class="btn btn-success w-100">
+            <button type="submit" class="btn btn-success w-100">
               Send Final Suggestions
             </button>
           </form>
