@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 app.secret_key = "hospital123"
 
-# ---------------- CONFIG ----------------
+# ================= CONFIG =================
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(BASE_DIR, "hospital.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -37,6 +37,7 @@ class Appointment(db.Model):
     report = db.Column(db.String(200))
     suggestion = db.Column(db.Text)
     medicine = db.Column(db.Text)
+    ai_analysis = db.Column(db.Text)
 
 # ================= HOME =================
 
@@ -63,14 +64,13 @@ def patient_register():
 @app.route("/patient/login", methods=["GET", "POST"])
 def patient_login():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
-
-        patient = Patient.query.filter_by(email=email, password=password).first()
+        patient = Patient.query.filter_by(
+            email=request.form["email"],
+            password=request.form["password"]
+        ).first()
 
         if patient:
             session["patient_name"] = patient.name
-            session["patient_email"] = patient.email
             return redirect("/patient/dashboard")
         else:
             return "Invalid patient login"
@@ -83,18 +83,18 @@ def patient_dashboard():
     if "patient_name" not in session:
         return redirect("/patient/login")
 
-    reviews = Appointment.query.filter_by(
+    appointments = Appointment.query.filter_by(
         patient_name=session["patient_name"]
-    ).filter(
-        Appointment.suggestion.isnot(None)
     ).all()
 
     return render_template(
         "patient/dashboard.html",
-        reviews=reviews,
+        reviews=appointments,
         patient=session["patient_name"]
     )
 
+
+# ================= NORMAL BOOK APPOINTMENT =================
 
 @app.route("/patient/book", methods=["GET", "POST"])
 def patient_book():
@@ -102,6 +102,7 @@ def patient_book():
         return redirect("/patient/login")
 
     if request.method == "POST":
+
         file = request.files["report"]
         filename = ""
 
@@ -111,20 +112,62 @@ def patient_book():
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
         a = Appointment(
-            patient_name=session["patient_name"],   # 🔥 IMPORTANT
+            patient_name=session["patient_name"],
             doctor_name=request.form["doctor"],
             date=request.form["date"],
             time=request.form["time"],
             problem=request.form["problem"],
             report=filename
         )
+
         db.session.add(a)
         db.session.commit()
-        flash(f"Appointment booked successfully, {session['patient_name']}!")
 
+        flash("Appointment booked successfully!")
         return redirect("/patient/dashboard")
 
     return render_template("patient/book.html")
+
+
+# ================= AI DOCTOR (INSTANT) =================
+
+@app.route("/patient/ai", methods=["GET", "POST"])
+def patient_ai():
+    if "patient_name" not in session:
+        return redirect("/patient/login")
+
+    if request.method == "POST":
+
+        problem_text = request.form["problem"]
+
+        # Simple AI Logic
+        if "fracture" in problem_text.lower():
+            ai_result = "AI: Possible fracture detected. Recommend X-ray."
+        elif "fever" in problem_text.lower():
+            ai_result = "AI: Possible viral infection. Stay hydrated."
+        elif "chest pain" in problem_text.lower():
+            ai_result = "AI: Possible cardiac issue. Immediate evaluation required."
+        elif "headache" in problem_text.lower():
+            ai_result = "AI: Could be migraine or stress-related."
+        else:
+            ai_result = "AI: Further clinical evaluation required."
+
+        ai_medicine = "AI Suggested Medicines: Paracetamol, Ibuprofen (if required)"
+
+        a = Appointment(
+            patient_name=session["patient_name"],
+            problem=problem_text,
+            ai_analysis=ai_result + " | " + ai_medicine
+        )
+
+        db.session.add(a)
+        db.session.commit()
+
+        flash("AI Analysis completed successfully!")
+        return redirect("/patient/dashboard")
+
+    return render_template("patient/ai.html")
+
 
 # ================= DOCTOR =================
 
@@ -145,10 +188,10 @@ def doctor_register():
 @app.route("/doctor/login", methods=["GET", "POST"])
 def doctor_login():
     if request.method == "POST":
-        name = request.form["name"]
-        password = request.form["password"]
-
-        doctor = Doctor.query.filter_by(name=name, password=password).first()
+        doctor = Doctor.query.filter_by(
+            name=request.form["name"],
+            password=request.form["password"]
+        ).first()
 
         if doctor:
             session["doctor_name"] = doctor.name
@@ -183,12 +226,11 @@ def doctor_review(id):
         appt.medicine = request.form["medicine"]
         db.session.commit()
 
-        # 🔔 Flash Message
-        flash(f"Suggestion sent successfully to {appt.patient_name}")  # 👈 HERE
-
+        flash(f"Suggestion sent successfully to {appt.patient_name}")
         return redirect("/doctor/dashboard")
 
     return render_template("doctor/review.html", appt=appt)
+
 
 # ================= LOGOUT =================
 
@@ -197,14 +239,10 @@ def logout():
     session.clear()
     return redirect("/")
 
+
 # ================= RUN =================
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
-
-# ================= END =================
-
-
